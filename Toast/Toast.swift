@@ -433,19 +433,39 @@ public extension UIView {
             wrapperView.layer.shadowOffset = style.shadowOffset
         }
         
-        var imageSize = CGSize.zero
-        var imageOriginX: CGFloat = 0
-        if let image = image {
+        if style.layoutHorizontal == .vertical {
+            var imageSuggestSize: CGSize = .zero
+            if image != nil {
+                imageSuggestSize = style.imageSize
+            }
+            var titleSuggestSize: CGSize = .zero
+            if let title = title {
+                titleSuggestSize = title.boundingRect(with: CGSize(width: bounds.size.width * style.maxWidthPercentage - style.horizontalPadding * 2, height: .infinity), options: [.usesFontLeading, .usesLineFragmentOrigin], attributes: [.font: style.titleFont], context: nil).size
+                titleSuggestSize.width = ceil(titleSuggestSize.width)
+                titleSuggestSize.height = ceil(titleSuggestSize.height)
+            }
+            var messageSuggestSize: CGSize = .zero
+            if let message = message {
+                messageSuggestSize = message.boundingRect(with: CGSize(width: bounds.size.width * style.maxWidthPercentage - style.horizontalPadding * 2, height: .infinity), options: [.usesFontLeading, .usesLineFragmentOrigin], attributes: [.font: style.messageFont], context: nil).size
+                messageSuggestSize.width = ceil(messageSuggestSize.width)
+                messageSuggestSize.height = ceil(messageSuggestSize.height)
+            }
+            let contentWidth = style.horizontalPadding * 2 + max(imageSuggestSize.width, max(titleSuggestSize.width, messageSuggestSize.width))
+            var contentHeight = style.verticalPadding
+            if imageSuggestSize.height > 0 {
+                contentHeight += imageSuggestSize.height + style.verticalPadding
+            }
+            if titleSuggestSize.height > 0 {
+                contentHeight += titleSuggestSize.height + style.verticalPadding
+            }
+            if messageSuggestSize.height > 0 {
+                contentHeight += messageSuggestSize.height + style.verticalPadding
+            }
+            
             imageView = UIImageView(image: image)
             imageView?.contentMode = .scaleAspectFit
-            imageSize = CGSize(width: style.imageSize.width, height: style.imageSize.height)
-            imageOriginX = style.horizontalPadding
+            imageView?.frame = CGRect(origin: CGPoint(x: (contentWidth - imageSuggestSize.width) / 2, y: style.verticalPadding), size: imageSuggestSize)
             
-            wrapperView.addSubview(imageView!)
-        }
-        
-        var titleSize = CGSize.zero
-        if let title = title {
             titleLabel = UILabel()
             titleLabel?.numberOfLines = style.titleNumberOfLines
             titleLabel?.font = style.titleFont
@@ -454,15 +474,8 @@ public extension UIView {
             titleLabel?.textColor = style.titleColor
             titleLabel?.backgroundColor = UIColor.clear
             titleLabel?.text = title;
+            titleLabel?.frame = CGRect(origin: CGPoint(x: style.horizontalPadding, y: style.verticalPadding + (imageSuggestSize.height == 0 ? 0 : (imageSuggestSize.height + style.horizontalPadding))), size: CGSizeMake(contentWidth - style.horizontalPadding * 2, titleSuggestSize.height))
             
-            let maxTitleSize = CGSize(width: (self.bounds.size.width * style.maxWidthPercentage) - imageSize.width, height: self.bounds.size.height * style.maxHeightPercentage)
-            titleSize = titleLabel!.sizeThatFits(maxTitleSize)
-            
-            wrapperView.addSubview(titleLabel!)
-        }
-        
-        var messageSize = CGSize.zero
-        if let message = message {
             messageLabel = UILabel()
             messageLabel?.text = message
             messageLabel?.numberOfLines = style.messageNumberOfLines
@@ -471,73 +484,120 @@ public extension UIView {
             messageLabel?.lineBreakMode = .byTruncatingTail;
             messageLabel?.textColor = style.messageColor
             messageLabel?.backgroundColor = UIColor.clear
+            messageLabel?.frame = CGRect(origin: CGPoint(x: style.horizontalPadding, y: contentHeight - style.verticalPadding - messageSuggestSize.height), size: CGSizeMake(contentWidth - style.horizontalPadding * 2, messageSuggestSize.height))
             
-            let maxMessageSize = CGSize(width: (self.bounds.size.width * style.maxWidthPercentage) - imageSize.width, height: self.bounds.size.height * style.maxHeightPercentage)
-            let fittedMessageSize = messageLabel!.sizeThatFits(maxMessageSize)
-            let actualWidth = min(fittedMessageSize.width, maxMessageSize.width)
-            let actualHeight = min(fittedMessageSize.height, maxMessageSize.height)
-            messageSize = CGSize(width: actualWidth, height: actualHeight)
+            if let imageView = imageView { wrapperView.addSubview(imageView) }
+            if let titleLabel = titleLabel { wrapperView.addSubview(titleLabel) }
+            if let messageLabel = messageLabel { wrapperView.addSubview(messageLabel) }
+            wrapperView.frame = CGRect(origin: .zero, size: CGSizeMake(contentWidth, contentHeight))
             
-            wrapperView.addSubview(messageLabel!)
-        }
-  
-        let textWidth = max(titleSize.width, messageSize.width)
-        let textOriginX = imageOriginX + imageSize.width + style.horizontalPadding
-        let wrapperWidth = max((imageSize.width + (style.horizontalPadding * 2.0)), (textOriginX + textWidth + style.horizontalPadding))
-        let imageHeight = imageSize.height
-        let textHeight = (titleLabel == nil ? 0 : titleSize.height + style.verticalPadding) + messageSize.height
-        let wrapperHeight = style.verticalPadding + max(imageHeight, textHeight) + style.verticalPadding
-        
-        wrapperView.frame = CGRect(x: 0.0, y: 0.0, width: wrapperWidth, height: wrapperHeight)
-        
-        if imageSize.height > textHeight {
-            // image is higher than text, vertical alignment for text matters
-            imageView?.frame = CGRect(
-                origin: CGPoint(x: imageOriginX, y: style.verticalPadding),
-                size: imageSize
-            )
-            let titleOriginY: CGFloat
-            switch style.textVerticalAlignment {
-            case .top: titleOriginY = style.verticalPadding
-            case .centerY: titleOriginY = style.verticalPadding + (imageSize.height - textHeight) / 2
-            case .bottom: titleOriginY = wrapperHeight - style.verticalPadding - textHeight
-            }
-            titleLabel?.frame = CGRect(
-                x: textOriginX,
-                y: titleOriginY,
-                width: textWidth,
-                height: titleSize.height
-            )
-            messageLabel?.frame = CGRect(
-                x: textOriginX,
-                y: titleOriginY + (titleLabel == nil ? 0 : titleSize.height + style.verticalPadding),
-                width: textWidth,
-                height: messageSize.height
-            )
         } else {
-            // text is higher than image, vertical alignment for the image matters
-            titleLabel?.frame = CGRect(
-                x: textOriginX,
-                y: style.verticalPadding,
-                width: textWidth,
-                height: titleSize.height
-            )
-            messageLabel?.frame = CGRect(
-                x: textOriginX,
-                y: (titleLabel == nil ? 0 : style.verticalPadding + titleSize.height) + style.verticalPadding,
-                width: textWidth,
-                height: messageSize.height
-            )
-            let originY: CGFloat
-            switch style.imageVerticalAlignment {
-            case .top: originY = style.verticalPadding
-            case .centerY: originY = style.verticalPadding + (textHeight - imageSize.height) / 2
-            case .bottom: originY = wrapperHeight - style.verticalPadding - imageSize.height
+            var imageSize = CGSize.zero
+            var imageOriginX: CGFloat = 0
+            if let image = image {
+                imageView = UIImageView(image: image)
+                imageView?.contentMode = .scaleAspectFit
+                imageSize = CGSize(width: style.imageSize.width, height: style.imageSize.height)
+                imageOriginX = style.horizontalPadding
+                
+                wrapperView.addSubview(imageView!)
             }
-            imageView?.frame = CGRect(
-                origin: CGPoint(x: imageOriginX, y: originY),
-                size: imageSize
-            )
+            
+            var titleSize = CGSize.zero
+            if let title = title {
+                titleLabel = UILabel()
+                titleLabel?.numberOfLines = style.titleNumberOfLines
+                titleLabel?.font = style.titleFont
+                titleLabel?.textAlignment = style.titleAlignment
+                titleLabel?.lineBreakMode = .byTruncatingTail
+                titleLabel?.textColor = style.titleColor
+                titleLabel?.backgroundColor = UIColor.clear
+                titleLabel?.text = title;
+                
+                let maxTitleSize = CGSize(width: (self.bounds.size.width * style.maxWidthPercentage) - imageSize.width, height: self.bounds.size.height * style.maxHeightPercentage)
+                titleSize = titleLabel!.sizeThatFits(maxTitleSize)
+                
+                wrapperView.addSubview(titleLabel!)
+            }
+            
+            var messageSize = CGSize.zero
+            if let message = message {
+                messageLabel = UILabel()
+                messageLabel?.text = message
+                messageLabel?.numberOfLines = style.messageNumberOfLines
+                messageLabel?.font = style.messageFont
+                messageLabel?.textAlignment = style.messageAlignment
+                messageLabel?.lineBreakMode = .byTruncatingTail;
+                messageLabel?.textColor = style.messageColor
+                messageLabel?.backgroundColor = UIColor.clear
+                
+                let maxMessageSize = CGSize(width: (self.bounds.size.width * style.maxWidthPercentage) - imageSize.width, height: self.bounds.size.height * style.maxHeightPercentage)
+                let fittedMessageSize = messageLabel!.sizeThatFits(maxMessageSize)
+                let actualWidth = min(fittedMessageSize.width, maxMessageSize.width)
+                let actualHeight = min(fittedMessageSize.height, maxMessageSize.height)
+                messageSize = CGSize(width: actualWidth, height: actualHeight)
+                
+                wrapperView.addSubview(messageLabel!)
+            }
+      
+            let textWidth = max(titleSize.width, messageSize.width)
+            let textOriginX = imageOriginX + imageSize.width + style.horizontalPadding
+            let wrapperWidth = max((imageSize.width + (style.horizontalPadding * 2.0)), (textOriginX + textWidth + style.horizontalPadding))
+            let imageHeight = imageSize.height
+            let textHeight = (titleLabel == nil ? 0 : titleSize.height + style.verticalPadding) + messageSize.height
+            let wrapperHeight = style.verticalPadding + max(imageHeight, textHeight) + style.verticalPadding
+            
+            wrapperView.frame = CGRect(x: 0.0, y: 0.0, width: wrapperWidth, height: wrapperHeight)
+            
+            if imageSize.height > textHeight {
+                // image is higher than text, vertical alignment for text matters
+                imageView?.frame = CGRect(
+                    origin: CGPoint(x: imageOriginX, y: style.verticalPadding),
+                    size: imageSize
+                )
+                let titleOriginY: CGFloat
+                switch style.textVerticalAlignment {
+                case .top: titleOriginY = style.verticalPadding
+                case .centerY: titleOriginY = style.verticalPadding + (imageSize.height - textHeight) / 2
+                case .bottom: titleOriginY = wrapperHeight - style.verticalPadding - textHeight
+                }
+                titleLabel?.frame = CGRect(
+                    x: textOriginX,
+                    y: titleOriginY,
+                    width: textWidth,
+                    height: titleSize.height
+                )
+                messageLabel?.frame = CGRect(
+                    x: textOriginX,
+                    y: titleOriginY + (titleLabel == nil ? 0 : titleSize.height + style.verticalPadding),
+                    width: textWidth,
+                    height: messageSize.height
+                )
+            } else {
+                // text is higher than image, vertical alignment for the image matters
+                titleLabel?.frame = CGRect(
+                    x: textOriginX,
+                    y: style.verticalPadding,
+                    width: textWidth,
+                    height: titleSize.height
+                )
+                messageLabel?.frame = CGRect(
+                    x: textOriginX,
+                    y: (titleLabel == nil ? 0 : style.verticalPadding + titleSize.height) + style.verticalPadding,
+                    width: textWidth,
+                    height: messageSize.height
+                )
+                let originY: CGFloat
+                switch style.imageVerticalAlignment {
+                case .top: originY = style.verticalPadding
+                case .centerY: originY = style.verticalPadding + (textHeight - imageSize.height) / 2
+                case .bottom: originY = wrapperHeight - style.verticalPadding - imageSize.height
+                }
+                imageView?.frame = CGRect(
+                    origin: CGPoint(x: imageOriginX, y: originY),
+                    size: imageSize
+                )
+            }
         }
         
         return wrapperView
@@ -558,6 +618,15 @@ public extension UIView {
  methods.
 */
 public struct ToastStyle {
+    
+    /// defines the layout direction,
+    /// defualt is the horizontal, likes |img|txt1|
+    ///                                  |   |txt2|
+    /// vertical is the newly created layout direction, which will layout image and texts from up to down, you can specify the verticialPadding and horizontalPadding to adjust its spacing.
+    public enum Directional {
+        case horizontal
+        case vertical
+    }
 
     /**
      How image and text can be vertically aligned within the toast view.
@@ -569,6 +638,9 @@ public struct ToastStyle {
     }
     
     public init() {}
+    
+    /// layout directions, defualt is horizontal
+    public var layoutHorizontal: Directional = .horizontal
     
     /**
      The background color. Default is `.black` at 80% opacity.
