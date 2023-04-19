@@ -427,7 +427,7 @@ public extension UIView {
         wrapperView.layer.cornerRadius = style.cornerRadius
         
         if style.displayShadow {
-            wrapperView.layer.shadowColor = UIColor.black.cgColor
+            wrapperView.layer.shadowColor = style.shadowColor.cgColor
             wrapperView.layer.shadowOpacity = style.shadowOpacity
             wrapperView.layer.shadowRadius = style.shadowRadius
             wrapperView.layer.shadowOffset = style.shadowOffset
@@ -474,7 +474,7 @@ public extension UIView {
             titleLabel?.textColor = style.titleColor
             titleLabel?.backgroundColor = UIColor.clear
             titleLabel?.text = title;
-            titleLabel?.frame = CGRect(origin: CGPoint(x: style.horizontalPadding, y: style.verticalPadding + (imageSuggestSize.height == 0 ? 0 : (imageSuggestSize.height + style.horizontalPadding))), size: CGSizeMake(contentWidth - style.horizontalPadding * 2, titleSuggestSize.height))
+            titleLabel?.frame = CGRect(origin: CGPoint(x: style.horizontalPadding, y: style.verticalPadding + (imageSuggestSize.height == 0 ? 0 : (imageSuggestSize.height + style.verticalPadding))), size: CGSizeMake(contentWidth - style.horizontalPadding * 2, titleSuggestSize.height))
             
             messageLabel = UILabel()
             messageLabel?.text = message
